@@ -1,0 +1,73 @@
+@startuml
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 5
+skinparam maxMessageSize 220
+skinparam sequence {
+  ParticipantBackgroundColor #EBF5FB
+  ParticipantBorderColor #2874A6
+  ParticipantFontColor #1A1A1A
+  ArrowColor #555555
+  ArrowFontColor #333333
+  ArrowFontSize 11
+  LifeLineBackgroundColor #FEFEFE
+}
+
+title "Sequence Flow: bpf_struct_ops_prepare_trampoline"
+
+legend right
+  **Sequence Flow Legend**
+  ---
+  →   call   : [N] func_name(args)
+  --> return : return
+  Callers shown : up to 5 levels above target
+  Callees shown : up to 3 levels below target
+endlegend
+
+participant "bpf_struct_ops_map_update_elem\n[bpf_struct_ops.c:686]\n(caller d1)" as bpf_struct_ops_map_update_elem
+participant "bpf_struct_ops_prepare_trampoline\n[bpf_struct_ops.c:597]\n** TARGET **" as bpf_struct_ops_prepare_trampoline #2E86C1
+participant "bpf_struct_ops_image_free\n[bpf_struct_ops.c:140]" as bpf_struct_ops_image_free
+participant "bpf_jit_uncharge_modmem\n[core.c:1059]" as bpf_jit_uncharge_modmem
+participant "arch_free_bpf_trampoline\n[trampoline.c:1354]" as arch_free_bpf_trampoline
+participant "bpf_jit_free_exec\n[core.c:1069]" as bpf_jit_free_exec
+participant "bpf_prog_pack_free\n[core.c:983]" as bpf_prog_pack_free
+participant "check_struct_ops_btf_id\n[verifier.c:24773]" as check_struct_ops_btf_id
+participant "bpf_struct_ops_find\n[btf.c:9675]" as bpf_struct_ops_find
+participant "bpf_struct_ops_supported\n[bpf_struct_ops.c:324]" as bpf_struct_ops_supported
+participant "btf_is_module\n[btf.c:8271]" as btf_is_module
+participant "bpf_jit_supports_private_stack\n[core.c:3202]" as bpf_jit_supports_private_stack
+participant "bpf_prog_ctx_arg_info_init\n[verifier.c:24764]" as bpf_prog_ctx_arg_info_init
+participant "arch_prepare_bpf_trampoline\n[trampoline.c:1333]" as arch_prepare_bpf_trampoline
+participant "arch_bpf_trampoline_size\n[trampoline.c:1369]" as arch_bpf_trampoline_size
+
+bpf_struct_ops_map_update_elem -> bpf_struct_ops_prepare_trampoline : bpf_struct_ops_prepare_trampoline()
+
+bpf_struct_ops_prepare_trampoline -> bpf_struct_ops_image_free : [1] bpf_struct_ops_image_free()
+bpf_struct_ops_image_free -> bpf_jit_uncharge_modmem : [1] bpf_jit_uncharge_modmem()
+bpf_jit_uncharge_modmem --> bpf_struct_ops_image_free : return
+bpf_struct_ops_image_free -> arch_free_bpf_trampoline : [2] arch_free_bpf_trampoline()
+arch_free_bpf_trampoline -> bpf_jit_free_exec : [1] bpf_jit_free_exec()
+bpf_jit_free_exec --> arch_free_bpf_trampoline : return
+arch_free_bpf_trampoline -> bpf_prog_pack_free : [2] bpf_prog_pack_free()
+bpf_prog_pack_free --> arch_free_bpf_trampoline : return
+arch_free_bpf_trampoline --> bpf_struct_ops_image_free : return
+bpf_struct_ops_image_free -> check_struct_ops_btf_id : [3] check_struct_ops_btf_id()
+check_struct_ops_btf_id -> bpf_struct_ops_find : [1] bpf_struct_ops_find()
+bpf_struct_ops_find --> check_struct_ops_btf_id : return
+check_struct_ops_btf_id -> bpf_struct_ops_supported : [2] bpf_struct_ops_supported()
+bpf_struct_ops_supported --> check_struct_ops_btf_id : return
+check_struct_ops_btf_id -> btf_is_module : [3] btf_is_module()
+btf_is_module --> check_struct_ops_btf_id : return
+check_struct_ops_btf_id -> bpf_jit_supports_private_stack : [4] bpf_jit_supports_private_stack()
+bpf_jit_supports_private_stack --> check_struct_ops_btf_id : return
+check_struct_ops_btf_id -> bpf_prog_ctx_arg_info_init : [5] bpf_prog_ctx_arg_info_init()
+bpf_prog_ctx_arg_info_init --> check_struct_ops_btf_id : return
+check_struct_ops_btf_id --> bpf_struct_ops_image_free : return
+bpf_struct_ops_image_free --> bpf_struct_ops_prepare_trampoline : return
+bpf_struct_ops_prepare_trampoline -> arch_prepare_bpf_trampoline : [2] arch_prepare_bpf_trampoline()
+arch_prepare_bpf_trampoline --> bpf_struct_ops_prepare_trampoline : return
+bpf_struct_ops_prepare_trampoline -> arch_bpf_trampoline_size : [3] arch_bpf_trampoline_size()
+arch_bpf_trampoline_size --> bpf_struct_ops_prepare_trampoline : return
+
+bpf_struct_ops_prepare_trampoline --> bpf_struct_ops_map_update_elem : return
+
+@enduml

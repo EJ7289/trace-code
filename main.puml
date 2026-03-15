@@ -1,0 +1,89 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontSize 12
+skinparam component {
+  BorderColor #555555
+  FontColor #1A1A1A
+}
+skinparam arrow {
+  Color #555555
+  FontSize 10
+}
+
+title "Call Graph: bpf_struct_ops_prepare_trampoline  [max depth: 3]"
+
+legend right
+  **Call Graph Legend**
+  ---
+  Backward (left)  = functions that CALL the target
+  Target  (centre) = traced function
+  Forward (right)  = functions the target CALLS
+  ---
+  Depth groups: hop distance from target
+  Arrow [N] = call sequence within that caller
+  Arrow dN  = depth hop from target
+  ---
+  Language colours:
+  <back:#AED6F1>  </back> python
+  <back:#A9DFBF>  </back> javascript
+  <back:#F9E79F>  </back> java
+  <back:#F1948A>  </back> c/c++
+endlegend
+
+note as ExecFlow
+  **Execution Flow of bpf_struct_ops_prepare_trampoline**
+  (call order within this function)
+  ---
+  [1] bpf_struct_ops_image_free  [bpf_struct_ops.c:140]
+  [2] arch_prepare_bpf_trampoline  [trampoline.c:1333]
+  [3] arch_bpf_trampoline_size  [trampoline.c:1369]
+end note
+
+package "Callers - depth 1  (direct)" #EBF5FB {
+  component "bpf_struct_ops_map_update_elem\n[bpf_struct_ops.c:686]\ndepth: 1" as bpf_struct_ops_map_update_elem <<C/C++>> #F1948A
+}
+
+component "bpf_struct_ops_prepare_trampoline\n[bpf_struct_ops.c:597]" as bpf_struct_ops_prepare_trampoline <<C/C++>> #2E86C1 #1A5276 #line.bold
+
+package "Callees - depth 1  (direct)" #EAFAF1 {
+  component "arch_bpf_trampoline_size\n[trampoline.c:1369]\ndepth: 1" as arch_bpf_trampoline_size <<C/C++>> #F1948A
+  component "arch_prepare_bpf_trampoline\n[trampoline.c:1333]\ndepth: 1" as arch_prepare_bpf_trampoline <<C/C++>> #F1948A
+  component "bpf_struct_ops_image_free\n[bpf_struct_ops.c:140]\ndepth: 1" as bpf_struct_ops_image_free <<C/C++>> #F1948A
+}
+
+package "Callees - depth 2" #D5F5E3 {
+  component "arch_free_bpf_trampoline\n[trampoline.c:1354]\ndepth: 2" as arch_free_bpf_trampoline <<C/C++>> #F1948A
+  component "bpf_jit_uncharge_modmem\n[core.c:1059]\ndepth: 2" as bpf_jit_uncharge_modmem <<C/C++>> #F1948A
+  component "check_struct_ops_btf_id\n[verifier.c:24773]\ndepth: 2" as check_struct_ops_btf_id <<C/C++>> #F1948A
+}
+
+package "Callees - depth 3" #A9DFBF {
+  component "bpf_jit_free_exec\n[core.c:1069]\ndepth: 3" as bpf_jit_free_exec <<C/C++>> #F1948A
+  component "bpf_jit_supports_private_stack\n[core.c:3202]\ndepth: 3" as bpf_jit_supports_private_stack <<C/C++>> #F1948A
+  component "bpf_prog_ctx_arg_info_init\n[verifier.c:24764]\ndepth: 3" as bpf_prog_ctx_arg_info_init <<C/C++>> #F1948A
+  component "bpf_prog_pack_free\n[core.c:983]\ndepth: 3" as bpf_prog_pack_free <<C/C++>> #F1948A
+  component "bpf_struct_ops_find\n[btf.c:9675]\ndepth: 3" as bpf_struct_ops_find <<C/C++>> #F1948A
+  component "bpf_struct_ops_supported\n[bpf_struct_ops.c:324]\ndepth: 3" as bpf_struct_ops_supported <<C/C++>> #F1948A
+  component "btf_is_module\n[btf.c:8271]\ndepth: 3" as btf_is_module <<C/C++>> #F1948A
+}
+
+' --- edges ---
+bpf_struct_ops_map_update_elem --> bpf_struct_ops_prepare_trampoline : "[8] d1"
+bpf_struct_ops_image_free --> bpf_jit_uncharge_modmem : "[1] d2"
+bpf_struct_ops_image_free --> arch_free_bpf_trampoline : "[2] d2"
+bpf_struct_ops_image_free --> check_struct_ops_btf_id : "[3] d2"
+bpf_struct_ops_prepare_trampoline --> bpf_struct_ops_image_free : "[1] d1"
+bpf_struct_ops_prepare_trampoline --> arch_prepare_bpf_trampoline : "[2] d1"
+bpf_struct_ops_prepare_trampoline --> arch_bpf_trampoline_size : "[3] d1"
+bpf_prog_pack_free --> bpf_jit_free_exec : "[1] d3"
+arch_free_bpf_trampoline --> bpf_jit_free_exec : "[1] d3"
+arch_free_bpf_trampoline --> bpf_prog_pack_free : "[2] d3"
+check_struct_ops_btf_id --> bpf_struct_ops_find : "[1] d3"
+check_struct_ops_btf_id --> bpf_struct_ops_supported : "[2] d3"
+check_struct_ops_btf_id --> btf_is_module : "[3] d3"
+check_struct_ops_btf_id --> bpf_jit_supports_private_stack : "[4] d3"
+check_struct_ops_btf_id --> bpf_prog_ctx_arg_info_init : "[5] d3"
+
+@enduml

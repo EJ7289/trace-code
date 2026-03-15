@@ -1,0 +1,80 @@
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam activity {
+  BackgroundColor #DDEBF7
+  BorderColor #2874A6
+  FontColor #1A1A1A
+  FontSize 12
+  DiamondBackgroundColor #FFF2CC
+  DiamondBorderColor #D6A910
+  DiamondFontColor #5D4E00
+  ArrowColor #555555
+  ArrowFontSize 10
+}
+
+title "Logic Flow: bpf_struct_ops_desc_init"
+
+start
+
+note right
+  **bpf_struct_ops_desc_init**
+  //params: st_ops_desc, btf, log//
+  //source: bpf_struct_ops.c:331//
+end note
+
+#F2F2F2:st_ops = bpf_struct_ops;
+#F2F2F2:arg_info = bpf_struct_ops_arg_info;
+#F2F2F2:member = btf_member;
+#F2F2F2:t = btf_type;
+#F2F2F2:value_name = 128;
+if (strlen(st_ops-~>name) + VALUE_PREFIX_LEN ~>= size...?) then (yes)
+  #DDEBF7:pr_warn('struct_ops name %s is..., st_ops-~>name);
+endif
+#DDEBF7:sprintf(value_name, '%s%s', VALUE_PREFIX, st_ops-~>name);
+if (!st_ops-~>cfi_stubs?) then (yes)
+  #DDEBF7:pr_warn('struct_ops for %s has..., st_ops-~>name);
+endif
+if (type_id ~< 0?) then (yes)
+  #DDEBF7:pr_warn('Cannot find struct %s..., st_ops-~>name, btf_get_name(btf));
+endif
+if (btf_type_vlen(t) ~> BPF_STRUCT_OPS_MAX_NR_MEMBERS?) then (yes)
+  #DDEBF7:pr_warn('Cannot support #%u me..., btf_type_vlen(t), st_ops-~>name);
+endif
+if (value_id ~< 0?) then (yes)
+  #DDEBF7:pr_warn('Cannot find struct %s..., value_name, btf_get_name(btf));
+endif
+#DDEBF7:arg_info = btf_type_vlen(t);
+#F2F2F2:st_ops_desc-~>arg_info = arg_info;
+#F2F2F2:st_ops_desc-~>type = t;
+#DDEBF7:for_each_member(i, t, member);
+#F2F2F2:func_proto = btf_type;
+#F2F2F2:ret_type = btf_type;
+#DDEBF7:mname = btf_name_by_offset(btf, member-~>name_off);
+if (!*mname?) then (yes)
+  #DDEBF7:pr_warn('anon member in struct..., st_ops-~>name);
+endif
+if (__btf_member_bitfield_size(t, member)?) then (yes)
+  #DDEBF7:pr_warn('bit field member %s i..., mname, st_ops-~>name);
+endif
+if (!st_ops_ids[IDX_MODULE_ID] && is_module_member(...?) then (yes)
+  #DDEBF7:pr_warn(''struct module' btf i..., st_ops-~>name);
+endif
+if (func_proto-~>type?) then (yes)
+  if (ret_type && !__btf_type_is_struct(ret_type)?) then (yes)
+    #DDEBF7:pr_warn('func ptr %s in struct..., mname, st_ops-~>name);
+  endif
+endif
+if (btf_distill_func_proto(log, btf, func_proto, mn...?) then (yes)
+  #DDEBF7:pr_warn('Error in parsing func..., mname, st_ops-~>name);
+endif
+#DDEBF7:err = prepare_arg_info(btf, st_ops-~>name, mname, func_proto, stub_func_addr, arg_info + i);
+if (err?) then (yes)
+endif
+if (st_ops-~>init(btf)?) then (yes)
+  #DDEBF7:pr_warn('Error in init bpf_str..., st_ops-~>name);
+endif
+#E2EFDA:return 0;
+#E2EFDA:return err;
+
+stop
+@enduml
