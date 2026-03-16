@@ -14,6 +14,8 @@ Feature checklist
 [x] WhileBlock        – while loop with entry condition
 [x] TryBlock          – try / except (multiple handlers) / finally
 [x] SwitchBlock       – match/case (Python 3.10+) as switch/case
+[x] GotoStmt          – goto statement (C/C++)
+[x] LabelStmt         – label definition (C/C++)
 [x] FunctionBody      – top-level container (params, source info, statements)
 """
 
@@ -117,6 +119,19 @@ class SwitchBlock:
     """A match/switch statement (Python 3.10+ match/case)."""
     subject: str
     cases: List[SwitchCase] = field(default_factory=list)
+
+
+@dataclass
+class GotoStmt:
+    """A goto statement (C/C++)."""
+    label: str
+    comment: str = ""
+
+
+@dataclass
+class LabelStmt:
+    """A label definition (C/C++)."""
+    name: str
 
 
 @dataclass

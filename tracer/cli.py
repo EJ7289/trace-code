@@ -9,7 +9,7 @@ from typing import List, Optional
 from .graph import CallGraph
 from .parsers import get_parser, EXTENSION_MAP
 from .analyzer import analyze
-from .exporters import PlantUMLExporter, ActivityExporter, SequenceExporter
+from .exporters import PlantUMLExporter, ActivityExporter, SequenceExporter, LogicSequenceExporter
 
 
 def _collect_source_files(paths: List[str]) -> List[str]:
@@ -145,6 +145,57 @@ def _generate_sequence_diagram(
     )
 
 
+def _generate_logic_sequence(
+    result, safe_name: str,
+) -> None:
+    """Generate the logic-flow sequence diagram for the target function.
+
+    Uses the standalone C flow parser (no libclang needed) to parse the
+    function body, then renders it as a PlantUML sequence diagram showing
+    internal control flow, function calls with activate/deactivate, etc.
+    """
+    from .parsers.c_flow_parser import parse_c_file
+    from .exporters.logic_sequence_exporter import LogicSequenceExporter, build_func_summaries
+
+    target_node = result.target
+    file_path = target_node.file
+
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext not in ('.c', '.cpp', '.cc', '.cxx', '.h', '.hpp'):
+        print(f"  [skip] logic-sequence not supported for {ext}", file=sys.stderr)
+        return
+
+    try:
+        parser, all_funcs = parse_c_file(file_path)
+    except Exception as exc:
+        print(f"  [error] logic-sequence parse failed: {exc}", file=sys.stderr)
+        return
+
+    func_name = target_node.name
+    body = parser.parse_function(func_name)
+    if body is None:
+        print(f"  [warn] could not parse body of '{func_name}'", file=sys.stderr)
+        return
+
+    # Build summaries for helper functions (for return-arrow labels)
+    defined_names = {f.name for f in all_funcs}
+    func_bodies = {}
+    for f in all_funcs:
+        if f.name != func_name:
+            fb = parser.parse_function(f.name)
+            if fb:
+                func_bodies[f.name] = fb
+
+    summaries = build_func_summaries(func_bodies)
+
+    output_path = f"{safe_name}_logic_sequence.puml"
+    LogicSequenceExporter().export_to_file(
+        body, output_path,
+        defined_funcs=defined_names,
+        func_summaries=summaries,
+    )
+
+
 def run(args: Optional[List[str]] = None):
     parser = argparse.ArgumentParser(
         prog="tracer",
@@ -255,6 +306,11 @@ def run(args: Optional[List[str]] = None):
         help="Skip generating the caller sequence diagram.",
     )
     parser.add_argument(
+        "--no-logic-sequence",
+        action="store_true",
+        help="Skip generating the logic-flow sequence diagram (C/C++ only).",
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Print per-file parsing progress during scanning.",
@@ -362,14 +418,19 @@ def run(args: Optional[List[str]] = None):
                                        opts.seq_depth, opts.forward_depth,
                                        show_files)
 
+        # ── Diagram 4: Logic-flow sequence (_logic_sequence.puml) ─────
+        if not opts.no_logic_sequence:
+            _generate_logic_sequence(result, base)
+
     print(f"\n{'=' * 62}")
     print("Done.")
     if not opts.no_activity or not opts.no_sequence:
         print()
         print("  Diagrams generated per function:")
-        print("    <name>.puml           Call graph  (callers + callees + depth)")
-        print("    <name>_activity.puml  Logic flow  (if/for/while + call order)")
-        print("    <name>_sequence.puml  Caller chain (who calls it + args)")
+        print("    <name>.puml                    Call graph  (callers + callees + depth)")
+        print("    <name>_activity.puml           Logic flow  (if/for/while + call order)")
+        print("    <name>_sequence.puml           Caller chain (who calls it + args)")
+        print("    <name>_logic_sequence.puml     Logic-flow sequence diagram (C/C++)")
         print()
         print("  Render with: java -jar plantuml.jar *.puml")
         print("  Or paste content at: https://www.plantuml.com/plantuml/uml/")
